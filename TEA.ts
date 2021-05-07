@@ -17,6 +17,15 @@
 export default class TinyEncryptionAlgorithm {
 	private static delta = 0x9e3779b9;
 
+	public password: Array<number> = new Array(4);
+
+	constructor(password: string) {
+		for (let i = 0; i < 4; i++)
+			this.password[i] = TinyEncryptionAlgorithm.Str4ToLong(
+				password.slice(i * 4, (i + 1) * 4)
+			);
+	}
+
 	/**
 	 * @author See Class auhtors
 	 *
@@ -50,6 +59,70 @@ export default class TinyEncryptionAlgorithm {
 		}
 
 		return this.escCtrlCh(s);
+	}
+
+	/**
+	 * @author See Class auhtors
+	 *
+	 * @since 01.05.2021
+	 *
+	 * @param plaintext The text that should get encrypted.
+	 * @returns The chiphertext(= encrypted text)
+	 * @throws "Object doesn't support this property or method" if 'password' or 'plaintext' are passes as string objects rather than strings
+	 *
+	 * use (16 chars of) 'password' to encrypt 'plaintext'
+	 */
+	public encrypt(plaintext: string): string {
+		let v: Array<number> = new Array(2),
+			s: string = '',
+			i: number;
+
+		plaintext = escape(plaintext); // use escape() so only have single-byte chars to encode
+
+		for (i = 0; i < plaintext.length; i += 8) {
+			// encode plaintext into s in 64-bit (8 char) blocks
+			v[0] = TinyEncryptionAlgorithm.Str4ToLong(plaintext.slice(i, i + 4)); // ... note this is 'electronic codebook' mode
+			v[1] = TinyEncryptionAlgorithm.Str4ToLong(plaintext.slice(i + 4, i + 8));
+			TinyEncryptionAlgorithm.code(v, this.password);
+			s +=
+				TinyEncryptionAlgorithm.LongToStr4(v[0]) +
+				TinyEncryptionAlgorithm.LongToStr4(v[1]);
+		}
+
+		return TinyEncryptionAlgorithm.escCtrlCh(s);
+	}
+
+	/**
+	 * It does the same thing as the static method but is optimized,
+	 * its won't compute k everytime but instead take it from the instance.
+	 *
+	 * Because of the optimisation you are required to first create a instance of TinyEncryptionAlgorithm
+	 *
+	 * @since 03.05.2021
+	 *
+	 * @param ciphertext
+	 * @returns
+	 */
+	public decrypt(ciphertext: string): string {
+		let v: Array<number> = new Array(2),
+			s: string = '',
+			i: number;
+
+		ciphertext = TinyEncryptionAlgorithm.unescCtrlCh(ciphertext);
+		for (i = 0; i < ciphertext.length; i += 8) {
+			// decode ciphertext into s in 64-bit (8 char) blocks
+			v[0] = TinyEncryptionAlgorithm.Str4ToLong(ciphertext.slice(i, i + 4));
+			v[1] = TinyEncryptionAlgorithm.Str4ToLong(ciphertext.slice(i + 4, i + 8));
+			TinyEncryptionAlgorithm.decode(v, this.password);
+			s +=
+				TinyEncryptionAlgorithm.LongToStr4(v[0]) +
+				TinyEncryptionAlgorithm.LongToStr4(v[1]);
+		}
+
+		// strip trailing null chars resulting from filling 4-char blocks:
+		s = s.replace(/\0+$/, '');
+
+		return unescape(s);
 	}
 
 	/**
