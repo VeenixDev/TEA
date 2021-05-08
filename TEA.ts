@@ -10,6 +10,7 @@
  *    - Made into a class
  *    - documented
  *    - cleaned up
+ *    - added possibility to use password caching
  *
  *  This class contains the Tiny Encription Algorithm(short = TEA).
  *  The TEA is a short and fast algorithm to encode and decode text.
